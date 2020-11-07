@@ -109,9 +109,9 @@ class DailyGreeting(object):
         :return:
         """
         # 发件人邮箱地址
-        sender = 'chen_tang1999@163.com'
+        sender = 'xxxxx@163.com'
         # 客户端授权码：需要在注册邮箱后，登录进入->设置->常规设置->客户端授权码 里面进行设置
-        auth_code = 'DTBZRZLOCYPGKEXR'
+        auth_code = 'DTBZRZLALKSFOAJFIOSOCYPGKESKHAIHIAHXR'
         messageObj = MIMEText(message, "html", "utf-8")
         # 设置主题
         messageObj['Subject'] = Header("每日温馨提醒！（刚起床，虽迟但到！）", "utf-8")
