@@ -1,4 +1,4 @@
-from lxml import etree
+ from lxml import etree
 import requests
 import csv
 import time

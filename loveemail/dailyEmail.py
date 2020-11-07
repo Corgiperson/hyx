@@ -4,7 +4,7 @@ import requests
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
-
+from lxml import etree
 
 class DailyGreeting(object):
 
@@ -13,7 +13,7 @@ class DailyGreeting(object):
         self.whether_link = 'http://wthrcdn.etouch.cn/weather_mini?city='   # 天气api
         self.friend_list = friend_list
 
-    def get_whether(self, city):
+    def get_whether(self, city, name):
         """
         获取天气信息
         :param city: 城市
@@ -29,7 +29,7 @@ class DailyGreeting(object):
         wind_force = r['data']['forecast'][0]['fengli'][9:-3]   # 风力
         warn = r['data']['ganmao']                              # 感冒预提醒
         # 填充天气信息模板
-        msg = '<br>好儿子，' + '今天 ' + week + '<br>' + \
+        msg = '<br>{}，'.format(name) + '今天 ' + week + '<br>' + \
               '<br><font size=3 color=#0081ff><strong>天气：</strong></font>' + city + ' ' + weather + \
               '<br><font size=3 color=#0081ff><strong>温度：</strong></font>' + low_temp + '~' + high_temp + \
               '<br><font size=3 color=#0081ff><strong>风向：</strong></font>' + wind_dir + '，' + wind_force + \
@@ -48,9 +48,57 @@ class DailyGreeting(object):
                  '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
         # 填充每日一句模板
         msg = '<br><font size=3 color=lightpink><strong><i>' + en + '<br>' + cn + '</strong></font><br>' + \
-              '<br>' + indent + '<font size=3 color=#a5673f>—— 最爱你的爸爸~' + \
-              '<br><html><body><img src={}></body></html>'.format(r['fenxiang_img'])
+              '<br>' + indent + '<font size=3 color=#a5673f>—— 至少有一个人在记挂你~' + \
+              '</font><br><html><body><img src={}></body></html><br><br>'.format(r['fenxiang_img'])
         return str(msg)
+
+    def get_weibo_news(self):
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'}
+        url = 'https://s.weibo.com/top/summary?cate=socialevent'
+        html = requests.get(url, headers=headers)
+        html.encoding = 'utf-8'
+        time.sleep(1)
+        selector = etree.HTML(html.text)
+        news_list = selector.xpath('/html/body/div[1]/div[2]/div[2]/table/tbody/tr')
+        msg = ''
+        for news in news_list:
+            news_name = news.xpath('td[2]/a/text()')[0]
+            news_url = 'https://s.weibo.com' + news.xpath('td[2]/a/@href')[0]
+            msg += '<li><a href={} target="_blank">'.format(news_url) + '<font color="#5151A2">' + news_name + '</font>' + '</a></li><br>'
+        return msg
+
+    def get_weiboHotNews(self):
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'}
+        url = 'https://s.weibo.com/top/summary?cate=realtimehot'
+        html = requests.get(url, headers=headers)
+        html.encoding = 'utf-8'
+        time.sleep(1)
+        selector = etree.HTML(html.text)
+        news_list = selector.xpath('/html/body/div[1]/div[2]/div[2]/table/tbody/tr')
+        msg = ''
+        flag = True
+        for news in news_list:
+            if flag:
+                new_id = 'top'
+                new_name = news.xpath('td[2]/a/text()')[0]
+                new_url = 'https://s.weibo.com' + news.xpath('td[2]/a/@href')[0]
+                new_label = news.xpath('td[3]/i/text()')[0]
+                flag = False
+                msg += '<font color="#FFA042"><strong>' + new_id + '</strong></font>&nbsp;&nbsp;&nbsp;<a href={} target="_blank">'.format(new_url) + '<font color="#46A3FF">' + new_name + '</font>' + '</a>&nbsp;&nbsp;&nbsp;&nbsp;<font color="5CADAD"><strong>{}</strong></font><br>'.format(new_label)
+                continue
+            new_id = news.xpath('td[1]/text()')[0]
+            new_name = news.xpath('td[2]/a/text()')[0]
+            new_url = 'https://s.weibo.com' + news.xpath('td[2]/a/@href')[0]
+            new_searchNum = news.xpath('td[2]/span/text()')[0]
+            new_label = news.xpath('td[3]/i/text()')[0] if len(news.xpath('td[3]/i/text()')) != 0 else ''
+            # print(new_label)
+            msg += '<font color="#FFA042"><strong>' + new_id + '</strong></font>&nbsp;&nbsp;&nbsp;<a href={} target="_blank">'.format(
+                new_url) + '<font color="#46A3FF">' + new_name + '</font></a>&nbsp;&nbsp;&nbsp;&nbsp;' + new_searchNum
+            if not new_label: msg += '<br>'
+            else: msg += '&nbsp;&nbsp;&nbsp;&nbsp;<font color="5CADAD"><strong>{}</strong></font><br>'.format(new_label)
+        return msg
 
     @staticmethod
     def send_email_message(email, message):
@@ -61,12 +109,12 @@ class DailyGreeting(object):
         :return:
         """
         # 发件人邮箱地址
-        sender = 'xxxxx@163.com'
+        sender = 'chen_tang1999@163.com'
         # 客户端授权码：需要在注册邮箱后，登录进入->设置->常规设置->客户端授权码 里面进行设置
-        auth_code = 'DTBZARAZLOCYPGKEXR'
+        auth_code = 'DTBZRZLOCYPGKEXR'
         messageObj = MIMEText(message, "html", "utf-8")
         # 设置主题
-        messageObj['Subject'] = Header("每日温馨提醒！", "utf-8")
+        messageObj['Subject'] = Header("每日温馨提醒！（刚起床，虽迟但到！）", "utf-8")
         # 设置发件人
         messageObj['From'] = sender
         # 设置收件人
@@ -100,19 +148,24 @@ class DailyGreeting(object):
         for friend in self.friend_list:
             mail = friend.get('mail')
             city = friend.get('city')
-            cur_whether = self.get_whether(city)
+            name = friend.get('name')
+            his_or_her_name = friend.get('othername')
+            cur_whether = self.get_whether(city, his_or_her_name)
             cur_word = self.get_word()
+            cur_news = self.get_weibo_news()
+            cur_search = self.get_weiboHotNews()
             # 构造邮件的正文内容
-            msg = '您的贴心爸爸上线啦 ！！！<br>' + cur_whether + cur_word
+            msg = '您的贴心{}上线啦 ！！！<br>'.format(name) + cur_whether + cur_word + '<font size=5 color=#0081ff>下面是今天的微博要闻榜！</font><br><ul>' + cur_news + '</ul>' + \
+            '<font size=5 color=#01B468>下面是今天的微博热搜榜！</font><br>' + cur_search
             print("=========={}: {}".format(friend.get('mail'), msg))
             self.send_email_message(mail, msg)
 
+DailyGreeting([{'mail': '19127927490787238@qq.com', 'city': '西安','othername':'生儿' , 'name': '好兄弟'}]).main()
+# if __name__ == '__main__':
+#     # 需要发送邮件的联系方式
 
-if __name__ == '__main__':
-    # 需要发送邮件的联系方式
-    friend_list = [{'mail': '1243415227@qq.com', 'city': '抚州'}, {'mail': 'b13517043228@qq.com', 'city': '南京'}, {'mail': '229484538@qq.com', 'city': '南京'} ]
-    DailyGreeting(friend_list).main()
-    #
+#     DailyGreeting(friend_list).main()
+
     # SECONDS_PER_DAY = 24 * 60 * 60  # 一天时间(秒)
     # SET_TIME = 7                    # 定时每日7点执行一次
     # is_first = True                 # 是否第一次执行任务
